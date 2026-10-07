@@ -257,11 +257,11 @@ const KILLERS={
   watcher:{name:'The Watcher',blurb:'Silent and slow. Sees across whole rooms, nearly deaf.',sight:14,cone:70,hear:0.55,patrol:2.1,chase:4.35,terror:6,detect:0.8,lockerP:0.35,col:'#15172a',rim:'#5a62b8'},
   hound:{name:'The Hound',blurb:'Half-blind. Hears everything and follows blood.',sight:5.5,cone:130,hear:1.8,patrol:2.8,chase:4.6,terror:11,detect:1.1,lockerP:0.7,blood:true,col:'#2a2012',rim:'#b58a3c'}
 };
-const ITEMS={medkit:{name:'Med-kit',g:'+',c:'#e0675c'},fuse:{name:'Fuse',g:'⌁',c:'#e3a948'},cracker:{name:'Firecracker',g:'✶',c:'#c58cf0'},battery:{name:'Battery',g:'▮',c:'#8fd1b0'}};
+const ITEMS={medkit:{name:'Med-kit',g:'+',c:'#e0675c'},fuse:{name:'Fuse',g:'⌁',c:'#e3a948'},cracker:{name:'Firecracker',g:'✶',c:'#c58cf0'},battery:{name:'Battery',g:'▮',c:'#8fd1b0'},gas:{name:'Gas can',g:'▮',c:'#c0392b'}};
 const KEYC=[{n:'Red',c:'#d64545'},{n:'Blue',c:'#4f7fe0'},{n:'Green',c:'#54b36a'},{n:'Gold',c:'#e0b84a'},{n:'Violet',c:'#a46be0'}];
 const BOTNAMES=['Marta','Theo','Iris','Dev','Nadia','Owen','Kasia','Felix','June','Ravi'];
 const BOTCOLS=['#6fa8dc','#c9a0dc','#e6b35a','#7fc8a9','#e58f7a','#a3b86c','#d98cb3','#8fb0e0','#c4a484','#9ad1d4'];
-const GEN_T=48,FUSE_T=20,GATE_T=10;
+const GEN_T=40,FUSE_T=20,GATE_T=10;
 const settings={theme:'random',bots:5,size:'medium',killer:'random',view:'3d',floors:2};
 
 // ---------- world state ----------
@@ -922,7 +922,7 @@ function resolveAttack(){
 function hang(s,c){
   const k=killer;k.carrying=null;s.wiggle=0;s.hooks++;
   if(s.hooks>=3){s.st='dead';feed(`${nm(s)} ${was(s)} caged a third time and taken.`,'bad');}
-  else{s.st='caged';s.cage=c;c.occ=s;s.x=c.x+.5;s.y=c.y+.5;s.cageT=s.hooks===1?60:35;feed(`${nm(s)} ${was(s)} caged in the ${rooms[c.room].name}.`,'bad');sfxAt('cage',c.x,c.y,1.2);}
+  else{s.st='caged';s.cage=c;c.occ=s;s.x=c.x+.5;s.y=c.y+.5;s.cageT=s.hooks===1?90:60;feed(`${nm(s)} ${was(s)} caged in the ${rooms[c.room].name}.`,'bad');sfxAt('cage',c.x,c.y,1.2);}
   if(R()<0.3)startSearch(c.x+.5,c.y+.5,8);
   else{toPatrol();const far=rooms.filter(r=>Math.hypot(r.cx-c.x,r.cy-c.y)>18);if(far.length){director.hint=pick(far);director.hintT=25;}}
 }
@@ -1102,9 +1102,9 @@ function botThink(b){
   }
   for(const s of survs){
     if(s.st!=='caged'||s===b)continue;const c=s.cage;
-    const dc=Math.hypot(b.x-c.x-.5,b.y-c.y-.5),kNear=Math.hypot(k.x-c.x-.5,k.y-c.y-.5)<9,claimed=c.claim!==b.id&&tNow-c.claimT<2;
-    const want=b.pers.altruism+(s.isPlayer?0.15:0)+(s.cageT<20?0.15:0)-dc/120;
-    if(!kNear&&!claimed&&want>0.5&&!ai.badObj.has(c.id)){
+    const dc=Math.hypot(b.x-c.x-.5,b.y-c.y-.5)+(floorOf(b.x)!==floorOf(c.x)?20:0),kNear=Math.hypot(k.x-c.x-.5,k.y-c.y-.5)<(s.cageT<30?4:7),claimed=c.claim!==b.id&&tNow-c.claimT<2;
+    const want=b.pers.altruism+0.15+(s.isPlayer?0.15:0)+(s.cageT<40?0.25:0)-dc/200;
+    if(!kNear&&!claimed&&want>0.45&&!ai.badObj.has(c.id)){
       c.claim=b.id;c.claimT=tNow;
       if(s.isPlayer&&!ai.announced.has(s.hooks)){ai.announced.add(s.hooks);feed(`${b.name} is coming to get you out.`,'good');}
       setGoal(b,{k:'rescue',obj:c,tgt:s,ti:nearestSpot(c,b),sprint:dc>10});return;
@@ -1897,7 +1897,7 @@ function hudUpdate(){
   let text='',bar=-1;
   if(G.ended){text='';}
   else if(p.st==='carried'){text='Mash E to wriggle free';bar=p.wiggle;}
-  else if(p.st==='caged'){text=p.struggles>0?`Press E to struggle (${p.struggles} left), or wait for help`:'Wait for someone to free you';bar=p.cageT/(p.hooks===1?60:35);}
+  else if(p.st==='caged'){text=p.struggles>0?`Press E to struggle (${p.struggles} left), or wait for help`:'Wait for someone to free you';bar=p.cageT/(p.hooks===1?90:60);}
   else if(p.st==='downed'){text=p.act?'Dragging yourself up…':(p.selfRecover?'Hold E to drag yourself up (once)':'Crawl toward help');if(p.act)bar=p.act.t/p.act.dur;}
   else if(p.hidden){text='Hidden · press E to step out';}
   else if(p.act){const a=p.act;const L={pour:'Pouring gas',repair:'Repairing',gate:'Opening gate',search:'Searching',insert:'Inserting fuse',rescue:'Freeing',help:'Helping up',heal:'Healing'};text=L[a.kind]||'Working';bar=(a.kind==='repair'||a.kind==='gate')?a.target.progress:a.t/a.dur;}
